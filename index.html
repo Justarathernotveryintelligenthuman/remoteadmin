@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RemoteAdmin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --accent: #4f8ef7;
+    --accent2: #34d399;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --text2: #8892a4;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* LOGIN SCREEN */
+  #login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: var(--bg);
+  }
+
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+  }
+
+  .login-card h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+  }
+
+  .login-card p {
+    color: var(--text2);
+    font-size: 14px;
+    margin-bottom: 28px;
+  }
+
+  .field {
+    margin-bottom: 16px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+
+  .field input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .field input:focus { border-color: var(--accent); }
+
+  .btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .btn:hover { opacity: 0.9; }
+  .btn:active { transform: scale(0.98); }
+
+  .login-error {
+    color: var(--danger);
+    font-size: 13px;
+    margin-top: 12px;
+    text-align: center;
+    display: none;
+  }
+
+  /* MAIN APP */
+  #app { display: none; flex-direction: column; min-height: 100vh; }
+
+  /* TOPBAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 60px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulse 2s infinite;
+  }
+
+  .status-dot.offline { background: var(--danger); box-shadow: 0 0 8px var(--danger); animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 3px;
+  }
+
+  .nav-tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    font-family: var(--font);
+  }
+
+  .nav-tab.active {
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  .disconnect-btn {
+    font-size: 13px;
+    color: var(--text2);
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: none;
+    font-family: var(--font);
+    transition: all 0.15s;
+  }
+
+  .disconnect-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+  /* CONTENT AREA */
+  .content { flex: 1; padding: 24px; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* DASHBOARD */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -1px;
+    font-family: var(--mono);
+  }
+
+  .stat-value.good { color: var(--accent2); }
+  .stat-value.warn { color: var(--warn); }
+  .stat-value.bad { color: var(--danger); }
+
+  .stat-sub {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 4px;
+  }
+
+  /* RAM bar */
+  .ram-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+
+  .ram-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--accent);
+    transition: width 0.5s ease;
+  }
+
+  /* CONSOLE */
+  .console-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 160px);
+  }
+
+  .console-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .console-header span {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+  }
+
+  .console-clear {
+    font-size: 12px;
+    color: var(--text2);
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: none;
+    font-family: var(--font);
+    transition: all 0.15s;
+  }
+
+  .console-clear:hover { color: var(--text); }
+
+  .console-output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #a8b4c8;
+  }
+
+  .console-output::-webkit-scrollbar { width: 4px; }
+  .console-output::-webkit-scrollbar-track { background: transparent; }
+  .console-output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-line { word-break: break-all; }
+  .log-line.error { color: var(--danger); }
+  .log-line.warn { color: var(--warn); }
+  .log-line.info { color: #a8b4c8; }
+
+  .console-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .console-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .console-input:focus { border-color: var(--accent); }
+
+  .send-btn {
+    padding: 10px 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .send-btn:hover { opacity: 0.85; }
+
+  /* PLAYERS */
+  .players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  .player-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .player-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--surface2);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .player-avatar img { width: 100%; height: 100%; }
+
+  .player-info { flex: 1; min-width: 0; }
+
+  .player-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .player-meta {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--mono);
+  }
+
+  .player-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .action-btn {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: none;
+    font-family: var(--font);
+    color: var(--text2);
+    transition: all 0.15s;
+  }
+
+  .action-btn:hover { color: var(--text); border-color: var(--text2); }
+  .action-btn.danger:hover { color: var(--danger); border-color: var(--danger); }
+
+  .no-players {
+    color: var(--text2);
+    font-size: 14px;
+    text-align: center;
+    padding: 60px 0;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  }
+
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+
+  .modal input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    outline: none;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .modal input:focus { border-color: var(--accent); }
+
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+  .modal-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-family: var(--font);
+    transition: opacity 0.15s;
+  }
+
+  .modal-btn.cancel { background: var(--surface2); color: var(--text2); }
+  .modal-btn.confirm { background: var(--danger); color: #fff; }
+  .modal-btn.confirm.tp { background: var(--accent); }
+  .modal-btn:hover { opacity: 0.85; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>RemoteAdmin</h1>
+    <p>Connect to your Minecraft server</p>
+    <div class="field">
+      <label>Server IP</label>
+      <input type="text" id="login-ip" placeholder="51.79.105.200" />
+    </div>
+    <div class="field">
+      <label>Port</label>
+      <input type="text" id="login-port" value="8002" />
+    </div>
+    <div class="field">
+      <label>Secret Token</label>
+      <input type="password" id="login-token" placeholder="your_secret_token" />
+    </div>
+    <button class="btn" onclick="connect()">Connect</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="status-dot" id="status-dot"></div>
+      <div class="logo">RemoteAdmin</div>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showTab('dashboard', this)">Dashboard</button>
+      <button class="nav-tab" onclick="showTab('console', this)">Console</button>
+      <button class="nav-tab" onclick="showTab('players', this)">Players</button>
+    </div>
+    <div class="topbar-right">
+      <button class="disconnect-btn" onclick="disconnect()">Disconnect</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- DASHBOARD TAB -->
+    <div class="tab-panel active" id="tab-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">TPS</div>
+          <div class="stat-value good" id="stat-tps">—</div>
+          <div class="stat-sub">Target: 20.0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Players Online</div>
+          <div class="stat-value" id="stat-players">—</div>
+          <div class="stat-sub" id="stat-players-max">— max</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">RAM Usage</div>
+          <div class="stat-value" id="stat-ram">—</div>
+          <div class="stat-sub" id="stat-ram-max">— MB max</div>
+          <div class="ram-bar"><div class="ram-bar-fill" id="ram-bar" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Status</div>
+          <div class="stat-value good" style="font-size:18px" id="stat-status">Online</div>
+          <div class="stat-sub" id="stat-version">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONSOLE TAB -->
+    <div class="tab-panel" id="tab-console">
+      <div class="console-wrap">
+        <div class="console-header">
+          <span>Live Console</span>
+          <button class="console-clear" onclick="clearConsole()">Clear</button>
+        </div>
+        <div class="console-output" id="console-output"></div>
+        <div class="console-input-row">
+          <input class="console-input" id="console-input" placeholder="Enter command..." onkeydown="if(event.key==='Enter') sendCommand()" />
+          <button class="send-btn" onclick="sendCommand()">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLAYERS TAB -->
+    <div class="tab-panel" id="tab-players">
+      <div class="players-grid" id="players-grid">
+        <div class="no-players">No players online</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ACTION MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Action</h3>
+    <input type="text" id="modal-input" placeholder="Reason..." />
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn confirm" id="modal-confirm" onclick="confirmModal()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let ws = null;
+  let serverVersion = '';
+  let pendingAction = null;
+
+  function connect() {
+    const ip = document.getElementById('login-ip').value.trim();
+    const port = document.getElementById('login-port').value.trim();
+    const token = document.getElementById('login-token').value.trim();
+
+    if (!ip || !port || !token) {
+      showLoginError('Please fill in all fields.');
+      return;
+    }
+
+    ws = new WebSocket(`wss://${ip}:${port}`);
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'auth', token }));
+    };
+
+    ws.onmessage = (event) => {
+      const packet = JSON.parse(event.data);
+      handlePacket(packet);
+    };
+
+    ws.onerror = () => showLoginError('Could not connect. Check IP, port and token.');
+    ws.onclose = () => {
+      document.getElementById('status-dot').classList.add('offline');
+      document.getElementById('stat-status').textContent = 'Offline';
+      document.getElementById('stat-status').className = 'stat-value bad';
+    };
+  }
+
+  function handlePacket(packet) {
+    switch (packet.type) {
+      case 'auth_ok':
+        serverVersion = packet.version || '';
+        document.getElementById('stat-version').textContent = serverVersion;
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        ws.send(JSON.stringify({ type: 'get_players' }));
+        break;
+
+      case 'auth_fail':
+        showLoginError('Invalid token.');
+        ws.close();
+        break;
+
+      case 'stats':
+        updateStats(packet);
+        break;
+
+      case 'console':
+        appendLog(packet.line);
+        break;
+
+      case 'player_list':
+        renderPlayers(packet.players);
+        break;
+    }
+  }
+
+  function updateStats(s) {
+    const tpsEl = document.getElementById('stat-tps');
+    tpsEl.textContent = s.tps.toFixed(1);
+    tpsEl.className = 'stat-value ' + (s.tps >= 18 ? 'good' : s.tps >= 15 ? 'warn' : 'bad');
+
+    document.getElementById('stat-players').textContent = s.players_online;
+    document.getElementById('stat-players-max').textContent = s.players_max + ' max';
+
+    const ramPct = Math.round((s.ram_used / s.ram_max) * 100);
+    document.getElementById('stat-ram').textContent = s.ram_used + ' MB';
+    document.getElementById('stat-ram-max').textContent = s.ram_max + ' MB max';
+    document.getElementById('ram-bar').style.width = ramPct + '%';
+
+    // Refresh player list
+    ws.send(JSON.stringify({ type: 'get_players' }));
+  }
+
+  function appendLog(line) {
+    const out = document.getElementById('console-output');
+    const div = document.createElement('div');
+    div.className = 'log-line ' + (line.includes('ERROR') ? 'error' : line.includes('WARN') ? 'warn' : 'info');
+    div.textContent = line;
+    out.appendChild(div);
+    // Keep last 500 lines
+    while (out.children.length > 500) out.removeChild(out.firstChild);
+    out.scrollTop = out.scrollHeight;
+  }
+
+  function clearConsole() {
+    document.getElementById('console-output').innerHTML = '';
+  }
+
+  function sendCommand() {
+    const input = document.getElementById('console-input');
+    const cmd = input.value.trim();
+    if (!cmd || !ws) return;
+    ws.send(JSON.stringify({ type: 'command', cmd }));
+    appendLog('> ' + cmd);
+    input.value = '';
+  }
+
+  function renderPlayers(players) {
+    const grid = document.getElementById('players-grid');
+    if (!players || players.length === 0) {
+      grid.innerHTML = '<div class="no-players">No players online</div>';
+      return;
+    }
+    grid.innerHTML = players.map(p => `
+      <div class="player-card">
+        <div class="player-avatar">
+          <img src="https://mc-heads.net/avatar/${p.name}/40" alt="${p.name}" />
+        </div>
+        <div class="player-info">
+          <div class="player-name">${p.name}</div>
+          <div class="player-meta">${p.world} · ${p.ping}ms · ❤ ${Math.round(p.health)}</div>
+        </div>
+        <div class="player-actions">
+          <button class="action-btn" onclick="openTP('${p.name}')">TP</button>
+          <button class="action-btn danger" onclick="openKick('${p.name}')">Kick</button>
+          <button class="action-btn danger" onclick="openBan('${p.name}')">Ban</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Modal helpers
+  function openKick(name) {
+    pendingAction = { action: 'kick', player: name };
+    showModal(`Kick ${name}`, 'Reason...', 'Kick', false);
+  }
+
+  function openBan(name) {
+    pendingAction = { action: 'ban', player: name };
+    showModal(`Ban ${name}`, 'Reason...', 'Ban', false);
+  }
+
+  function openTP(name) {
+    pendingAction = { action: 'tp', player: name };
+    showModal(`TP to ${name}`, 'Target player name...', 'Teleport', true);
+  }
+
+  function showModal(title, placeholder, confirmLabel, isTP) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-input').placeholder = placeholder;
+    document.getElementById('modal-input').value = '';
+    const btn = document.getElementById('modal-confirm');
+    btn.textContent = confirmLabel;
+    btn.className = 'modal-btn confirm' + (isTP ? ' tp' : '');
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+    pendingAction = null;
+  }
+
+  function confirmModal() {
+    if (!pendingAction || !ws) return;
+    const val = document.getElementById('modal-input').value.trim();
+    if (pendingAction.action === 'tp') {
+      ws.send(JSON.stringify({ type: 'action', action: 'tp', player: pendingAction.player, target: val }));
+    } else {
+      ws.send(JSON.stringify({ type: 'action', action: pendingAction.action, player: pendingAction.player, reason: val || 'No reason given' }));
+    }
+    closeModal();
+  }
+
+  function showTab(name, el) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    el.classList.add('active');
+  }
+
+  function showLoginError(msg) {
+    const el = document.getElementById('login-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function disconnect() {
+    if (ws) ws.close();
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+</script>
+</body>
+</html>
