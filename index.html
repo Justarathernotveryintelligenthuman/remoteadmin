@@ -686,11 +686,52 @@
     ws.send(JSON.stringify({ type: 'get_players' }));
   }
 
+  function ansiToHtml(line) {
+    const ansiColors = {
+      '30': '#4a4a4a', '31': '#ef4444', '32': '#34d399', '33': '#f59e0b',
+      '34': '#4f8ef7', '35': '#a78bfa', '36': '#22d3ee', '37': '#e2e8f0',
+      '90': '#6b7280', '91': '#f87171', '92': '#6ee7b7', '93': '#fcd34d',
+      '94': '#93c5fd', '95': '#c4b5fd', '96': '#67e8f9', '97': '#f8fafc',
+    };
+    // Strip all ANSI escape sequences and reparse with color
+    let result = '';
+    let openSpan = false;
+    // Match both real escape chars and literal \u001B or [Nm patterns
+    const regex = /(?:||\u001B|\033)\[([0-9;]*)m|\[([0-9;]+)m/g;
+    let last = 0;
+    let match;
+    while ((match = regex.exec(line)) !== null) {
+      // Append text before this match
+      const text = line.slice(last, match.index);
+      if (text) result += text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      last = match.index + match[0].length;
+      const code = match[1] || match[2] || '';
+      if (openSpan) { result += '</span>'; openSpan = false; }
+      if (code === '0' || code === '') continue;
+      for (const c of code.split(';')) {
+        if (ansiColors[c]) {
+          result += `<span style="color:${ansiColors[c]}">`;
+          openSpan = true;
+          break;
+        } else if (c === '1') {
+          result += `<span style="font-weight:600">`;
+          openSpan = true;
+          break;
+        }
+      }
+    }
+    // Append remaining text
+    const remaining = line.slice(last);
+    if (remaining) result += remaining.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    if (openSpan) result += '</span>';
+    return result || line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   function appendLog(line) {
     const out = document.getElementById('console-output');
     const div = document.createElement('div');
     div.className = 'log-line ' + (line.includes('ERROR') ? 'error' : line.includes('WARN') ? 'warn' : 'info');
-    div.textContent = line;
+    div.innerHTML = ansiToHtml(line);
     out.appendChild(div);
     // Keep last 500 lines
     while (out.children.length > 500) out.removeChild(out.firstChild);
